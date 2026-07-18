@@ -38,7 +38,7 @@ CREATE TABLE emails (
 - `GET /api/emails?id=123` — get a single email
 - `PATCH /api/emails` — `{ id, is_read }` — mark read/unread
 - `POST /api/send` — `{ from, to, subject, body, replyToEmailId? }` — send or reply
-- `POST /api/webhook` — Resend inbound webhook target
+- `POST /api/webhook` — Resend inbound webhook target 
 
 ## Status
 
