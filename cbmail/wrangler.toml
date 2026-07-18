@@ -1,8 +1,0 @@
-name = "cbmail"
-compatibility_date = "2026-07-01"
-pages_build_output_dir = "dist"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "cbmail-db"
-database_id = "35af1dcf-cd61-4a24-9862-cb18865395d4"
