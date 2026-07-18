@@ -9,4 +9,4 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "cbmail-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "35af1dcf-cd61-4a24-9862-cb18865395d4"
