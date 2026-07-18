@@ -42,4 +42,4 @@ CREATE TABLE emails (
 
 ## Status
 
-Backend wiring is functional. Frontend (`src/App.jsx`) is a bare stub for testing the API — the real inbox UI/design is a separate pass. 
+Backend wiring is functional. Frontend (`src/App.jsx`) is a bare stub for testing the API — the real inbox UI/design is a separate pass.  
