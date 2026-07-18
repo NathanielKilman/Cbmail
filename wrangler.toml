@@ -1,0 +1,12 @@
+name = "cbmail"
+main = "worker/index.js"
+compatibility_date = "2026-07-01"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cbmail-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
