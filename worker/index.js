@@ -35,8 +35,8 @@ async function handleWebhook(request, env) {
     else if (toLower.includes('code')) inbox = 'code';
 
     await env.DB.prepare(
-      `INSERT INTO emails (inbox, from_address, to_address, subject, body, html_body, message_id, raw_headers, received_at, is_read)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`
+      `INSERT INTO emails (inbox, from_address, to_address, subject, body, html_body, message_id, raw_headers, received_at, is_read, direction)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'inbound')`
     ).bind(
       inbox,
       from,
@@ -64,14 +64,22 @@ async function handleGetEmails(request, env) {
     return Response.json(email);
   }
 
-  const validInboxes = ['business', 'mechanical', 'code', 'general'];
+  const validInboxes = ['business', 'mechanical', 'code', 'general', 'sent'];
   if (!inbox || !validInboxes.includes(inbox)) {
-    return new Response('inbox query param required (business|mechanical|code|general)', { status: 400 });
+    return new Response('inbox query param required (business|mechanical|code|general|sent)', { status: 400 });
+  }
+
+  if (inbox === 'sent') {
+    const { results } = await env.DB.prepare(
+      `SELECT id, from_address, to_address, subject, received_at, is_read
+       FROM emails WHERE direction = 'outbound' ORDER BY received_at DESC LIMIT 100`
+    ).all();
+    return Response.json(results);
   }
 
   const { results } = await env.DB.prepare(
     `SELECT id, from_address, to_address, subject, received_at, is_read
-     FROM emails WHERE inbox = ? ORDER BY received_at DESC LIMIT 100`
+     FROM emails WHERE inbox = ? AND direction = 'inbound' ORDER BY received_at DESC LIMIT 100`
   ).bind(inbox).all();
 
   return Response.json(results);
@@ -118,6 +126,21 @@ async function handleSend(request, env) {
   if (error) {
     return new Response(JSON.stringify(error), { status: 502 });
   }
+
+  const inbox = from.split('@')[0]; // business/mechanical/code
+
+  await env.DB.prepare(
+    `INSERT INTO emails (inbox, from_address, to_address, subject, body, html_body, message_id, raw_headers, received_at, is_read, direction)
+     VALUES (?, ?, ?, ?, ?, NULL, ?, NULL, ?, 1, 'outbound')`
+  ).bind(
+    inbox,
+    from,
+    to,
+    subject,
+    body,
+    data?.id ?? null,
+    new Date().toISOString()
+  ).run();
 
   return Response.json(data);
 }
