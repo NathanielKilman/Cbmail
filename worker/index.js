@@ -129,6 +129,16 @@ async function handleSend(request, env) {
 
   const inbox = from.split('@')[0]; // business/mechanical/code
 
+  // The send response only gives us Resend's internal id, not the RFC
+  // Message-ID header needed for future threading. Fetch it separately.
+  let realMessageId = null;
+  try {
+    const { data: sent } = await resend.emails.get(data.id);
+    realMessageId = sent?.message_id ?? null;
+  } catch (err) {
+    // Non-fatal — the email already sent successfully either way.
+  }
+
   await env.DB.prepare(
     `INSERT INTO emails (inbox, from_address, to_address, subject, body, html_body, message_id, raw_headers, received_at, is_read, direction)
      VALUES (?, ?, ?, ?, ?, NULL, ?, NULL, ?, 1, 'outbound')`
@@ -138,7 +148,7 @@ async function handleSend(request, env) {
     to,
     subject,
     body,
-    data?.message_id ?? data?.id ?? null,
+    realMessageId,
     new Date().toISOString()
   ).run();
 
