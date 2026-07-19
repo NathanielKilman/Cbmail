@@ -11,11 +11,11 @@ async function handleWebhook(request, env) {
     event = resend.webhooks.verify({
       payload,
       headers: {
-        'svix-id': request.headers.get('svix-id'),
-        'svix-timestamp': request.headers.get('svix-timestamp'),
-        'svix-signature': request.headers.get('svix-signature'),
+        id: request.headers.get('svix-id'),
+        timestamp: request.headers.get('svix-timestamp'),
+        signature: request.headers.get('svix-signature'),
       },
-      secret: env.RESEND_WEBHOOK_SECRET,
+      webhookSecret: env.RESEND_WEBHOOK_SECRET,
     });
   } catch (err) {
     return new Response('Invalid signature', { status: 400 });
