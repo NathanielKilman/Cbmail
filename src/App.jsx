@@ -76,10 +76,15 @@ export default function App() {
   }
 
   function handleReply(email) {
-    const from = SENDERS.includes(email.to_address) ? email.to_address : SENDERS[0];
+    const isSent = email.direction === 'outbound';
+    const from = isSent
+      ? email.from_address
+      : (SENDERS.includes(email.to_address) ? email.to_address : SENDERS[0]);
+    const to = isSent ? email.to_address : email.from_address;
+
     setCompose({
       from,
-      to: email.from_address,
+      to,
       subject: email.subject?.startsWith('Re:') ? email.subject : `Re: ${email.subject || ''}`,
       body: '',
       replyToEmailId: email.id,
