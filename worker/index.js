@@ -18,7 +18,7 @@ async function handleWebhook(request, env) {
       webhookSecret: env.RESEND_WEBHOOK_SECRET,
     });
   } catch (err) {
-    return new Response('Invalid signature', { status: 400 });
+    return new Response('Invalid signature: ' + (err?.message || String(err)), { status: 400 });
   }
 
   if (event.type === 'email.received') {
