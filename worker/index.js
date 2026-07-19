@@ -44,7 +44,7 @@ async function handleWebhook(request, env) {
       subject,
       email?.text ?? '',
       email?.html ?? null,
-      event.data.email_id,
+      event.data.message_id ?? null,
       JSON.stringify(email?.headers ?? {}),
       new Date().toISOString()
     ).run();
@@ -138,7 +138,7 @@ async function handleSend(request, env) {
     to,
     subject,
     body,
-    data?.id ?? null,
+    data?.message_id ?? data?.id ?? null,
     new Date().toISOString()
   ).run();
 
