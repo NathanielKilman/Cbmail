@@ -4,7 +4,7 @@ import Sidebar from './components/Sidebar.jsx';
 import EmailList from './components/EmailList.jsx';
 import EmailDetail from './components/EmailDetail.jsx';
 import ComposeModal from './components/ComposeModal.jsx';
-import { fetchEmails, fetchEmail, markRead } from './lib/api.js';
+import { fetchEmails, fetchEmail, markRead, trashEmail, restoreEmail, deleteEmailForever } from './lib/api.js';
 
 const INBOX_IDS = ['business', 'mechanical', 'code', 'general'];
 const SENDERS = ['business@cybearbots.org', 'mechanical@cybearbots.org', 'code@cybearbots.org'];
@@ -100,6 +100,34 @@ export default function App() {
     loadInbox(activeInbox);
   }
 
+  async function clearSelectionIfSelected(id) {
+    if (selectedId === id) {
+      setSelectedId(null);
+      setSelectedEmail(null);
+      setShowDetailOnMobile(false);
+    }
+  }
+
+  async function handleTrash(id) {
+    await trashEmail(id);
+    setEmails((prev) => prev.filter((e) => e.id !== id));
+    clearSelectionIfSelected(id);
+    loadUnreadCounts();
+  }
+
+  async function handleRestore(id) {
+    await restoreEmail(id);
+    setEmails((prev) => prev.filter((e) => e.id !== id));
+    clearSelectionIfSelected(id);
+    loadUnreadCounts();
+  }
+
+  async function handleDeleteForever(id) {
+    await deleteEmailForever(id);
+    setEmails((prev) => prev.filter((e) => e.id !== id));
+    clearSelectionIfSelected(id);
+  }
+
   return (
     <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg)' }}>
       <Sidebar
@@ -151,6 +179,10 @@ export default function App() {
               selectedId={selectedId}
               onSelect={handleSelectEmail}
               sent={activeInbox === 'sent'}
+              isTrash={activeInbox === 'trash'}
+              onDelete={handleTrash}
+              onRestore={handleRestore}
+              onDeleteForever={handleDeleteForever}
             />
           </div>
 
@@ -160,6 +192,7 @@ export default function App() {
               loading={detailLoading}
               onReply={handleReply}
               onBack={() => setShowDetailOnMobile(false)}
+              onDelete={activeInbox === 'trash' ? null : handleTrash}
             />
           </div>
         </div>
