@@ -2,6 +2,10 @@ name = "cybearbots-cbmail"
 main = "worker/index.js"
 compatibility_date = "2026-07-01"
 
+routes = [
+  { pattern = "cbmail.cybearbots.org", custom_domain = true }
+]
+
 [triggers]
 crons = ["0 3 * * *"]
 
