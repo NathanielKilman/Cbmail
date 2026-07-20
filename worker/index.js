@@ -85,6 +85,14 @@ async function handleGetEmails(request, env) {
     return Response.json(results);
   }
 
+  if (inbox === 'general') {
+    const { results } = await env.DB.prepare(
+      `SELECT id, from_address, to_address, subject, received_at, is_read
+       FROM emails WHERE direction = 'inbound' AND deleted_at IS NULL ORDER BY received_at DESC LIMIT 100`
+    ).all();
+    return Response.json(results);
+  }
+
   const { results } = await env.DB.prepare(
     `SELECT id, from_address, to_address, subject, received_at, is_read
      FROM emails WHERE inbox = ? AND direction = 'inbound' AND deleted_at IS NULL ORDER BY received_at DESC LIMIT 100`
