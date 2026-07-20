@@ -1,3 +1,5 @@
+import { Trash2, RotateCcw, X } from 'lucide-react';
+
 function timeAgo(iso) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -10,7 +12,23 @@ function timeAgo(iso) {
   return new Date(iso).toLocaleDateString();
 }
 
-export default function EmailList({ emails, loading, selectedId, onSelect, sent }) {
+function daysLeft(deletedAt) {
+  const purgeAt = new Date(deletedAt).getTime() + 7 * 24 * 60 * 60 * 1000;
+  const remaining = Math.ceil((purgeAt - Date.now()) / (24 * 60 * 60 * 1000));
+  return Math.max(remaining, 0);
+}
+
+export default function EmailList({
+  emails,
+  loading,
+  selectedId,
+  onSelect,
+  sent,
+  isTrash,
+  onDelete,
+  onRestore,
+  onDeleteForever,
+}) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-[var(--text-faint)] text-sm">
@@ -22,7 +40,7 @@ export default function EmailList({ emails, loading, selectedId, onSelect, sent 
   if (emails.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-[var(--text-faint)] text-sm">
-        No emails in this inbox yet.
+        {isTrash ? 'Trash is empty.' : 'No emails in this inbox yet.'}
       </div>
     );
   }
@@ -33,10 +51,13 @@ export default function EmailList({ emails, loading, selectedId, onSelect, sent 
         const active = e.id === selectedId;
         const unread = !e.is_read;
         return (
-          <button
+          <div
             key={e.id}
+            role="button"
+            tabIndex={0}
             onClick={() => onSelect(e.id)}
-            className={`w-full text-left px-4 py-3 border-b flex items-start gap-3 transition-colors ${
+            onKeyDown={(ev) => ev.key === 'Enter' && onSelect(e.id)}
+            className={`w-full text-left px-4 py-3 border-b flex items-start gap-3 transition-colors cursor-pointer group ${
               active ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-card-hover)]'
             }`}
             style={{ borderColor: 'var(--border)' }}
@@ -53,10 +74,10 @@ export default function EmailList({ emails, loading, selectedId, onSelect, sent 
                     unread ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-muted)]'
                   }`}
                 >
-                  {sent ? `To: ${e.to_address}` : e.from_address}
+                  {sent || isTrash ? `To: ${e.to_address}` : e.from_address}
                 </span>
                 <span className="text-xs text-[var(--text-faint)] shrink-0">
-                  {timeAgo(e.received_at)}
+                  {isTrash ? `${daysLeft(e.deleted_at)}d left` : timeAgo(e.received_at)}
                 </span>
               </div>
               <div
@@ -67,7 +88,47 @@ export default function EmailList({ emails, loading, selectedId, onSelect, sent 
                 {e.subject || '(no subject)'}
               </div>
             </div>
-          </button>
+
+            <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {isTrash ? (
+                <>
+                  <button
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      onRestore(e.id);
+                    }}
+                    title="Restore"
+                    className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--accent-strong)] hover:bg-[var(--bg-card)]"
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                  <button
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      if (confirm('Delete this email forever? This cannot be undone.')) {
+                        onDeleteForever(e.id);
+                      }
+                    }}
+                    title="Delete forever"
+                    className="p-1.5 rounded text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-card)]"
+                  >
+                    <X size={14} />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    onDelete(e.id);
+                  }}
+                  title="Delete"
+                  className="p-1.5 rounded text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-card)]"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          </div>
         );
       })}
     </div>
