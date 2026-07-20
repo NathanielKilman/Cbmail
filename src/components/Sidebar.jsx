@@ -1,4 +1,4 @@
-import { Wrench, Code2, Briefcase, Inbox as InboxIcon, PenSquare, Send } from 'lucide-react';
+import { Wrench, Code2, Briefcase, Inbox as InboxIcon, PenSquare, Send, Trash2 } from 'lucide-react';
 
 const INBOXES = [
   { id: 'business', label: 'Business', icon: Briefcase },
@@ -75,6 +75,18 @@ export default function Sidebar({ activeInbox, onSelectInbox, unreadCounts, onCo
           >
             <Send size={15} />
             <span className="flex-1 text-left">SENT</span>
+          </button>
+
+          <button
+            onClick={() => onSelectInbox('trash')}
+            className={`flex items-center gap-3 px-3 py-2 rounded-md font-mono text-[11px] font-bold transition-colors ${
+              activeInbox === 'trash'
+                ? 'text-[var(--accent-strong)] bg-[var(--accent-soft)]'
+                : 'text-[var(--text)] hover:text-[var(--accent)] hover:bg-[var(--bg-card)]'
+            }`}
+          >
+            <Trash2 size={15} />
+            <span className="flex-1 text-left">TRASH</span>
           </button>
         </nav>
 
