@@ -64,36 +64,67 @@ async function handleGetEmails(request, env) {
     return Response.json(email);
   }
 
-  const validInboxes = ['business', 'mechanical', 'code', 'general', 'sent'];
+  const validInboxes = ['business', 'mechanical', 'code', 'general', 'sent', 'trash'];
   if (!inbox || !validInboxes.includes(inbox)) {
-    return new Response('inbox query param required (business|mechanical|code|general|sent)', { status: 400 });
+    return new Response('inbox query param required (business|mechanical|code|general|sent|trash)', { status: 400 });
+  }
+
+  if (inbox === 'trash') {
+    const { results } = await env.DB.prepare(
+      `SELECT id, from_address, to_address, subject, received_at, is_read, deleted_at, direction
+       FROM emails WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 100`
+    ).all();
+    return Response.json(results);
   }
 
   if (inbox === 'sent') {
     const { results } = await env.DB.prepare(
       `SELECT id, from_address, to_address, subject, received_at, is_read
-       FROM emails WHERE direction = 'outbound' ORDER BY received_at DESC LIMIT 100`
+       FROM emails WHERE direction = 'outbound' AND deleted_at IS NULL ORDER BY received_at DESC LIMIT 100`
     ).all();
     return Response.json(results);
   }
 
   const { results } = await env.DB.prepare(
     `SELECT id, from_address, to_address, subject, received_at, is_read
-     FROM emails WHERE inbox = ? AND direction = 'inbound' ORDER BY received_at DESC LIMIT 100`
+     FROM emails WHERE inbox = ? AND direction = 'inbound' AND deleted_at IS NULL ORDER BY received_at DESC LIMIT 100`
   ).bind(inbox).all();
 
   return Response.json(results);
 }
 
 async function handlePatchEmails(request, env) {
-  const { id, is_read } = await request.json();
+  const { id, is_read, deleted } = await request.json();
   if (!id) return new Response('id required', { status: 400 });
+
+  if (typeof deleted === 'boolean') {
+    await env.DB.prepare(`UPDATE emails SET deleted_at = ? WHERE id = ?`)
+      .bind(deleted ? new Date().toISOString() : null, id)
+      .run();
+    return new Response('OK', { status: 200 });
+  }
 
   await env.DB.prepare(`UPDATE emails SET is_read = ? WHERE id = ?`)
     .bind(is_read ? 1 : 0, id)
     .run();
 
   return new Response('OK', { status: 200 });
+}
+
+async function handleDeleteEmail(request, env) {
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id');
+  if (!id) return new Response('id required', { status: 400 });
+
+  await env.DB.prepare(`DELETE FROM emails WHERE id = ?`).bind(id).run();
+  return new Response('OK', { status: 200 });
+}
+
+async function purgeOldTrash(env) {
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  await env.DB.prepare(
+    `DELETE FROM emails WHERE deleted_at IS NOT NULL AND deleted_at < ?`
+  ).bind(cutoff).run();
 }
 
 async function handleSend(request, env) {
@@ -168,11 +199,18 @@ export default {
     if (url.pathname === '/api/emails' && request.method === 'PATCH') {
       return handlePatchEmails(request, env);
     }
+    if (url.pathname === '/api/emails' && request.method === 'DELETE') {
+      return handleDeleteEmail(request, env);
+    }
     if (url.pathname === '/api/send' && request.method === 'POST') {
       return handleSend(request, env);
     }
 
     // Anything else falls through to the static frontend build.
     return env.ASSETS.fetch(request);
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(purgeOldTrash(env));
   },
 };
