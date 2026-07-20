@@ -194,13 +194,159 @@ async function handleSend(request, env) {
   return Response.json(data);
 }
 
+const AUTH_COOKIE = 'cbmail_auth';
+const AUTH_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function getCookie(request, name) {
+  const header = request.headers.get('Cookie') || '';
+  const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return match ? match[1] : null;
+}
+
+function isTrustedReferrer(request) {
+  const referer = request.headers.get('Referer');
+  if (!referer) return false;
+  try {
+    const host = new URL(referer).hostname;
+    return host === 'cybearbots.org' || host.endsWith('.cybearbots.org') && host !== 'cbmail.cybearbots.org';
+  } catch {
+    return false;
+  }
+}
+
+function loginPage(error) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CBMail | Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: #0a0a0a; color: #f5f5f0; font-family: 'Inter', system-ui, sans-serif;
+  }
+  .card { background: #161616; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.75rem; padding: 2rem; width: 100%; max-width: 340px; }
+  .logo { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 1.5rem; margin-bottom: 1.5rem; }
+  .logo span { color: #52c98a; }
+  input {
+    width: 100%; padding: 0.6rem 0.75rem; margin-top: 0.35rem; margin-bottom: 1rem;
+    background: #0a0a0a; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.5rem;
+    color: #f5f5f0; font-size: 0.95rem;
+  }
+  label { font-size: 0.8rem; color: #a3a3a0; }
+  button {
+    width: 100%; padding: 0.65rem; background: #3ba271; color: #08130e; border: none;
+    border-radius: 0.5rem; font-weight: 600; font-size: 0.95rem; cursor: pointer;
+  }
+  button:hover { background: #52c98a; }
+  .error { color: #f87171; font-size: 0.85rem; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo"><span>CB</span>MAIL</div>
+    <form id="loginForm">
+      ${error ? '<div class="error">Incorrect password.</div>' : ''}
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autofocus />
+      <button type="submit">Sign In</button>
+    </form>
+  </div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('password').value;
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        window.location.href = '/?error=1';
+      }
+    });
+  </script>
+</body>
+</html>`;
+}
+
+async function handleLogin(request, env) {
+  const { password } = await request.json();
+  if (password !== env.SITE_PASSWORD) {
+    return new Response('Incorrect password', { status: 401 });
+  }
+  const cookieValue = await sha256Hex(env.SITE_PASSWORD + ':cbmail');
+  return new Response('OK', {
+    status: 200,
+    headers: {
+      'Set-Cookie': `${AUTH_COOKIE}=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${AUTH_MAX_AGE}`,
+    },
+  });
+}
+
+async function isAuthenticated(request, env) {
+  const cookie = getCookie(request, AUTH_COOKIE);
+  if (!cookie) return false;
+  const expected = await sha256Hex(env.SITE_PASSWORD + ':cbmail');
+  return cookie === expected;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // Resend calls this server-to-server — must stay open, no cookie involved.
     if (url.pathname === '/api/webhook' && request.method === 'POST') {
       return handleWebhook(request, env);
     }
+
+    if (url.pathname === '/api/login' && request.method === 'POST') {
+      return handleLogin(request, env);
+    }
+
+    const authed = await isAuthenticated(request, env);
+    if (!authed) {
+      if (isTrustedReferrer(request)) {
+        const cookieValue = await sha256Hex(env.SITE_PASSWORD + ':cbmail');
+        let response;
+        if (url.pathname.startsWith('/api/')) {
+          response = new Response('Unauthorized', { status: 401 });
+        } else {
+          const assetResp = await env.ASSETS.fetch(new Request(new URL('/', request.url)));
+          response = new Response(await assetResp.text(), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          });
+        }
+        response.headers.append(
+          'Set-Cookie',
+          `${AUTH_COOKIE}=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${AUTH_MAX_AGE}`
+        );
+        return response;
+      }
+
+      if (url.pathname.startsWith('/api/')) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+
+      const showError = url.searchParams.get('error') === '1';
+      return new Response(loginPage(showError), {
+        status: 401,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
+    }
+
     if (url.pathname === '/api/emails' && request.method === 'GET') {
       return handleGetEmails(request, env);
     }
