@@ -1,6 +1,9 @@
-name = "cbmail"
+name = "cybearbots-cbmail"
 main = "worker/index.js"
 compatibility_date = "2026-07-01"
+
+[triggers]
+crons = ["0 3 * * *"]
 
 [assets]
 directory = "./dist"
