@@ -18,6 +18,26 @@ export async function markRead(id, isRead) {
   });
 }
 
+export async function trashEmail(id) {
+  await fetch('/api/emails', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, deleted: true }),
+  });
+}
+
+export async function restoreEmail(id) {
+  await fetch('/api/emails', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, deleted: false }),
+  });
+}
+
+export async function deleteEmailForever(id) {
+  await fetch(`/api/emails?id=${id}`, { method: 'DELETE' });
+}
+
 export async function sendEmail({ from, to, subject, body, replyToEmailId }) {
   const res = await fetch('/api/send', {
     method: 'POST',
