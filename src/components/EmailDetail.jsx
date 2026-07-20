@@ -1,6 +1,6 @@
-import { Reply, ArrowLeft } from 'lucide-react';
+import { Reply, ArrowLeft, Trash2 } from 'lucide-react';
 
-export default function EmailDetail({ email, loading, onReply, onBack }) {
+export default function EmailDetail({ email, loading, onReply, onBack, onDelete }) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-[var(--text-faint)] text-sm">
@@ -42,6 +42,15 @@ export default function EmailDetail({ email, loading, onReply, onBack }) {
           <Reply size={14} />
           Reply
         </button>
+        {onDelete && (
+          <button
+            onClick={() => onDelete(email.id)}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium hover:border-red-400 hover:text-red-400 transition-colors"
+            style={{ borderColor: 'var(--border-strong)' }}
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
       </div>
 
       <div className="p-5 flex-1">
