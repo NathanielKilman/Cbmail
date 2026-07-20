@@ -10,7 +10,7 @@ const INBOX_IDS = ['business', 'mechanical', 'code', 'general'];
 const SENDERS = ['business@cybearbots.org', 'mechanical@cybearbots.org', 'code@cybearbots.org'];
 
 export default function App() {
-  const [activeInbox, setActiveInbox] = useState('business');
+  const [activeInbox, setActiveInbox] = useState('general');
   const [emails, setEmails] = useState([]);
   const [listLoading, setListLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
