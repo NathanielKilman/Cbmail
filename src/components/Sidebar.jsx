@@ -24,7 +24,7 @@ export default function Sidebar({ activeInbox, onSelectInbox, unreadCounts, onCo
       >
         <div className="h-16 flex items-center px-5 shrink-0">
           <span className="font-display font-black tracking-tight text-lg text-[var(--text)]">
-            CB<span className="text-[var(--accent-strong)]">MAIL</span>
+            <span className="text-[var(--accent-strong)]">CB</span>MAIL
           </span>
         </div>
 
