@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 
 const ALLOWED_SENDERS = ['business@cybearbots.org', 'mechanical@cybearbots.org', 'code@cybearbots.org'];
-const NTFY_TOPIC = 'cybearbots-cbmail.7504';
+const NTFY_TOPIC = 'cybearbots-cbmail-7504';
 
 async function sendPushNotification(title, message) {
   try {
