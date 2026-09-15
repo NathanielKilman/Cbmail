@@ -1,6 +1,23 @@
 import { Resend } from 'resend';
 
 const ALLOWED_SENDERS = ['business@cybearbots.org', 'mechanical@cybearbots.org', 'code@cybearbots.org'];
+const NTFY_TOPIC = 'cybearbots-cbmail.7504';
+
+async function sendPushNotification(title, message) {
+  try {
+    await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+      method: 'POST',
+      headers: {
+        Title: title,
+        Priority: 'default',
+        Tags: 'email',
+      },
+      body: message,
+    });
+  } catch (err) {
+    // Non-fatal — never block email processing on a notification failure.
+  }
+}
 
 async function handleGetInquiries(request, env) {
   const headers = {
@@ -92,6 +109,11 @@ async function handleWebhook(request, env) {
       JSON.stringify(email?.headers ?? {}),
       new Date().toISOString()
     ).run();
+
+    await sendPushNotification(
+      `New ${inbox} email`,
+      `From: ${from}\n${subject || '(no subject)'}`
+    );
   }
 
   return new Response('OK', { status: 200 });
@@ -415,4 +437,3 @@ export default {
     ctx.waitUntil(purgeOldTrash(env));
   },
 };
-
